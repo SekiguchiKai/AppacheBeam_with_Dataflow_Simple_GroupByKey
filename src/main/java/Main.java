@@ -24,10 +24,9 @@ public class Main {
         // ProcessContextは、inputを表すobject
         // 自分で定義しなくてもBeam SDKが勝手に取ってきてくれる
         public void processElement(ProcessContext c) {
-            System.out.print(c.element());
+            // ","で分割
             String[] words = c.element().split(",");
-            System.out.println("~~~" + words[0] + words[1]);
-
+            // 分割したword[0]をKに、words[1]をIntegerに変換してVにする
             c.output(KV.of(words[0], Integer.parseInt(words[1])));
         }
     }
@@ -39,8 +38,7 @@ public class Main {
     static class TransTypeFromKVAndMakeStringFn extends DoFn<KV<String, Iterable<Integer>>, String> {
         @ProcessElement
         public void processElement(ProcessContext c) {
-            System.out.println("groupedWords=" + c.element());
-
+            // inputをString型に変換する
             c.output(String.valueOf(c.element()));
 
         }
@@ -59,6 +57,8 @@ public class Main {
 
     /**
      * メイン
+     * 理解のため、メソッドチェーンを極力使用していない
+     * そのため、冗長なコードになっている
      *
      * @param args 引数
      */
@@ -78,12 +78,12 @@ public class Main {
         PCollection<KV<String, Integer>> kvCounter = lines.apply(ParDo.of(new SplitWordsAndMakeKVFn()));
 
         // GroupByKeyで、{Go, [2, 9, 1, 5]}のような形にする
+        // GroupByKey.<K, V>create())でGroupByKey<K, V>を生成している
         PCollection<KV<String, Iterable<Integer>>> groupedWords = kvCounter.apply(
                 GroupByKey.<String, Integer>create());
 
         // 出力のため、<KV<String, Iterable<Integer>>>型からString型に変換している
         PCollection<String> output = groupedWords.apply(ParDo.of(new TransTypeFromKVAndMakeStringFn()));
-
 
         // 書き込む
         output.apply(TextIO.write().to(OUTPUT_FILE_PATH));
